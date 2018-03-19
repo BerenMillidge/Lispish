@@ -165,26 +165,38 @@ lval* lval_add(lval* v, lval* x){
 
 
 
-void lval_print(lval v){
+// resolve circular dependency using a forward definition
+void lval_print(lval* v);
+
+// okay, so I also need to be able to print the s-expressions
+// which possily needs a special function
+// it loops over all the sub expressions and prints out them individually separated by spaces
+// i.e. as they are as the input
+
+void lval_expr_print(lval* v, char open, char close){
+	putchar(open);
+	for (int i = 0; i<v->count; i++){
+		lval_print(v->cell[i]);
+	//don't put a trailing spaceif last element!
+	if(i!=(v->coutn-1)){
+		putchar(' ');
+	}
+}
+putchar(close);
+}
+
+
+void lval_print(lval* v){
 	//needs to check if an error or not, to print correctly
 	switch(v.type){
 		case LVAL_NUM: printf("%li",v.num); break;
-
-		//in case there is an error, check what type it is and print
-		case LVAL_ERR:
-			if(v.err == LERR_DIV_ZERO){
-				printf("Error: Division by Zero!");
-			}
-			if(v.err == LERR_BAD_OP){
-				printf("Error: Invalid Operator!");
-			}
-			if(v.err == LERR_BAD_NUM){
-				printf("Error: Invalid Number!");
-			}
-			break;
+		case LVAL_ERR: printf("Error: %s", v->err); break;
+		case LVAL_SYM: printf("%s", v->sym); break;
+		case LVAL_SEXPR: lval_expr_print(v, '(', ')'); break;
 	}
 }
-void lval_println(lval v){
+
+void lval_println(lval* v){
 	lval_print(v);
 	putchar('\n');
 }
@@ -270,9 +282,9 @@ int main(int argc, char** argv) {
     mpc_result_t r;
     if (mpc_parse("<stdin>", input, Lispy, &r)) {
       
-      lval result = eval(r.output);
-      lval_println(result);
-      mpc_ast_delete(r.output);
+      lval* x = lval_read(r.output);
+      lval_println(x);
+      lval_del(x);
       
     } else {    
       mpc_err_print(r.error);
