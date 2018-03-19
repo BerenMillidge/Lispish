@@ -92,6 +92,32 @@ lval* lval_sexpr(void){
 }
 
 
+//delete the lval correctly depending on type to ensure there are no memory leaks
+void lval_del(lval* v){
+	switch(v->type){
+		//do nothing special for numbertypes
+		case LVAL_NUM: break;
+
+		//for err and sym free string data // you need to be careful about remembering
+		//to free strings as they are things to easily forger
+		case LVAL_ERR: free(v->err); break;
+		case LVAL_SYM: free(v->sym); break;
+
+		// if s-expr then delete all elements inside
+		case LVAL_SEXPR:
+			for (int i = 0; i<v->count; i++){
+				lval_del(v->cell[i]);
+			}
+			//also free memory allocated to contain the pointers
+			// you need to remember this!
+			free(v->cell);
+			break;
+	}
+	//free memory allocated for lval struct iteself
+	free(v);
+}
+
+
 
 
 void lval_print(lval v){
