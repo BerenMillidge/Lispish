@@ -127,6 +127,42 @@ lval* lval_read_num(mpc_ast_t* t){
 	return errno!=ERANGE ? lval_num(x): lval_err("Invalid Number!");
 }
 
+lval* lval_read(mpc_ast_t* t){
+	//if symbol or number return conversion to that type
+	if(strstr(t->tag, "number")){
+		return lval_read_num(t);
+	}
+	if(strstr(t->tag, "symbol")){
+		return lval_sym(t->contents);
+	}
+
+	// if root or sexpr then create empty list
+	lval* x = NULL;
+	if (strcmp(t->tag, ">")==0){
+		x = lval_sexpr();
+	}
+	if(strstr(t->tag, "sexpr")){
+		x = lval_sexpr();
+	}
+	//fill in the list with any valid expression contained within
+	for (int i = 0; i < t->children_num; i++) {
+    if (strcmp(t->children[i]->contents, "(") == 0) { continue; }
+    if (strcmp(t->children[i]->contents, ")") == 0) { continue; }
+    if (strcmp(t->children[i]->tag,  "regex") == 0) { continue; }
+    x = lval_add(x, lval_read(t->children[i]));
+  }
+  return x;
+}
+
+// add a new lval to the list in cell
+lval* lval_add(lval* v, lval* x){
+	v->count++;
+	v->cell = realloc(v->cell, sizeof(lval*) * v->count); // his allocates 
+	// enough space for the new cell structure
+	v->cell[v->count-1] = x; // since it is zero indexed!
+	return v;
+}
+
 
 
 void lval_print(lval v){
