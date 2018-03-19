@@ -49,21 +49,48 @@ typedef struct {
 	struct lval** cell;
 } lval;
 
-//create a new number type lval
-lval lval_num(long x){
-	lval v; //null initialisation
-	v.type = LVAL_NUM;
-	v.num = x;
+
+//rewrite the lvals to return a pointer to the lval and not the actual thing
+// itself, so it's easier!
+
+lval* lval_num(long x){
+	lval* v = malloc(sizeof(lval)); // allocate the memory ahead of time
+	v->type = LVAL_NUM;
+	v->num = x;
 	return v;
 }
 
-//create lval error type
-lval lval_err(int x){
-	lval v;
-	v.type = LVAL_ERR;
-	v.err = x;
+
+//returns a pointer to the error eval just created
+lval* lval_err(char* m){
+	lval* v = malloc(sizeof(lval)); // I don't know how it gets sizeof lval
+	// since lval contains cell which is a variable length list?
+	// so I really don't know there. or maybe it just contains a fixed length pointer?
+	v->type = LVAL_ERR;
+	// assign memory for the string!
+	v->err = malloc(strlen(m)+1);
+	strcpy(v->err, m);
 	return v;
 }
+
+lval* lval_sym(char* s){
+	lval* v = malloc(sizeof(lval));
+	v->type = LVAL_SYM;
+	v->sym = malloc(strlen(s)+1);
+	strcpy(v->sym, s);
+	return v;
+}
+
+
+//create an empty s-expr lval
+lval* lval_sexpr(void){
+	lval* v = malloc(sizeof(lval));
+	v->type = LVAL_SEXPR;
+	v->count = 0;
+	v->cell = NULL;
+	return v;
+}
+
 
 
 
