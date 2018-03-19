@@ -118,6 +118,15 @@ void lval_del(lval* v){
 }
 
 
+// now it's time to add the functions allowing reading in lvals
+// andconstructing the lval from the AST parsed from the input
+
+lval* lval_read_num(mpc_ast_t* t){
+	errno = 0;
+	long x = strtol(t->contents, NULL, 10);
+	return errno!=ERANGE ? lval_num(x): lval_err("Invalid Number!");
+}
+
 
 
 void lval_print(lval v){
