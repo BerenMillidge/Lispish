@@ -201,6 +201,50 @@ void lval_println(lval* v){
 
 // replace the eval op to deal with lvals as intended
 //including with the errors
+
+
+// now there needs to be a way to actuall evaluate these expressions
+// hopefully not too horrendously difficult
+lval* lval_eval_sexpr(lval* v){
+	//first evaluate all the children of the s-expr
+	for (int i = 0; i< v->count; i++){
+		v->cell[i] = lval_eval(v->cell[i]);
+	}
+
+	// if there are any errors return it immediately
+	for (int i = 0; i<v->count; i++){
+		if (v->cell[i]->type ==LVAL_ERR){
+			return lval_take(v,i);
+		}
+	}
+	// if it's an empty expression just return
+	if(v->count == 0){
+		return v;
+	}
+	if(v->cout ==1){
+		return lval_take(v,0);
+	}
+	//ensure the first element is a symbol
+	lval* f = lval_pop(v, 0);
+	if(f->type!=LVAL_SYM){
+		lval_del(f);
+		lval_del(v);
+		return lval_err("S-expression does not start with symbol!?");
+	}
+	//call builtin evaluator with operator
+	lval* result = builtin_op(v, f->sym);
+	lval_del(f);
+	return result;
+}
+
+
+lval* lval_eval(lval* v){
+	if(v->type == LVAL_SEXPR){
+		return lval_eval_sexpr(v);
+	}
+	return v;
+}
+
 lval eval_op(lval* x, char* op, lval y){
 	if(x->type==LVAL_ERR){
 		return x;
