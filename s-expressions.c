@@ -205,6 +205,31 @@ void lval_println(lval* v){
 
 // now there needs to be a way to actuall evaluate these expressions
 // hopefully not too horrendously difficult
+// okay,, now time to define the lval pop and lval take functions
+
+// pop removes an element from the lval list and returns it
+
+lval* lval_pop(lval* v, int i){
+	lval* x = v->cell[i];
+
+	// now neeed to replace the item in the list, shift the memory after the items over on top of it
+	memmove(&v->cell[i], &c->cell[i+1], sizeof(lval*)*(v->count-i-1));
+
+	//decrease the coutn
+	v->count--;
+	//reallocate the memory used
+	v->cell = realloc(v->cell, sizeof(lval*) * v->count);
+	return x;
+}
+
+lval* lval_take(lval* v, int i){
+	// this function just takes one element of a list of lvals nd dleletes the rest of the list
+	lval* x = lval_pop(v,i);
+	lval_del(v);
+	return x;
+}
+
+
 lval* lval_eval_sexpr(lval* v){
 	//first evaluate all the children of the s-expr
 	for (int i = 0; i< v->count; i++){
