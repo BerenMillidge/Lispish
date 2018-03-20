@@ -199,9 +199,6 @@ void lval_println(lval* v){
 	putchar('\n');
 }
 
-// replace the eval op to deal with lvals as intended
-//including with the errors
-
 
 // now there needs to be a way to actuall evaluate these expressions
 // hopefully not too horrendously difficult
@@ -213,7 +210,7 @@ lval* lval_pop(lval* v, int i){
 	lval* x = v->cell[i];
 
 	// now neeed to replace the item in the list, shift the memory after the items over on top of it
-	memmove(&v->cell[i], &c->cell[i+1], sizeof(lval*)*(v->count-i-1));
+	memmove(&v->cell[i], &v->cell[i+1], sizeof(lval*)*(v->count-i-1));
 
 	//decrease the coutn
 	v->count--;
@@ -227,6 +224,66 @@ lval* lval_take(lval* v, int i){
 	lval* x = lval_pop(v,i);
 	lval_del(v);
 	return x;
+}
+
+
+lval* builtin_op(lval* a, char* op){
+
+	// ensure all the arguments to the thing are numbers
+	for (int i = 0; i< a->count; i++){
+		if(a->cell[i]->type!=LVAL_NUM){
+			lval_del(a);
+			return lval_err("Cannot operate on a non number");
+		}
+	}
+
+	//pop the first element
+	lval* x = lval_pop(a,0);
+	//if no arguments and sub then perform unary negation
+	if((strcmp(op, "-")==0) && a->count==0){
+		x->num = -x->num;
+	}
+
+	//while there are still elements remaining
+	while(a->count>0){
+		//pop next element
+		lval* y = lval_pop(a,0);
+
+		if(strcmp(op, "+")==0) {
+			x->num += y->num;
+		}
+		if(strcmp(op, "-")==0){
+			x->num -=y->num;
+		}
+		if(strcmp(op, "*")==0){
+			x->num *= y->num;
+		}
+		if(strcmp(op, "/")==0){
+			if(y->num==0){
+				lval_del(x);
+				lval_del(y);
+				x = lval_err("Division by Zero!");
+				break;
+			}
+			// I guess c doesn't have try-catch
+			x->num /= y->num;
+		}
+		lval_del(y);
+	}
+	lval_del(a);
+	return x;
+}
+// replace the eval op to deal with lvals as intended
+//including with the errors
+
+lval* lval_eval_sexpr(lval* v);
+
+
+lval* lval_eval(lval* v){
+	if(v->type == LVAL_SEXPR){
+		return lval_eval_sexpr(v);
+	}
+	return v;
 }
 
 
@@ -246,7 +303,7 @@ lval* lval_eval_sexpr(lval* v){
 	if(v->count == 0){
 		return v;
 	}
-	if(v->cout ==1){
+	if(v->count ==1){
 		return lval_take(v,0);
 	}
 	//ensure the first element is a symbol
@@ -263,62 +320,16 @@ lval* lval_eval_sexpr(lval* v){
 }
 
 
-lval* lval_eval(lval* v){
-	if(v->type == LVAL_SEXPR){
-		return lval_eval_sexpr(v);
-	}
-	return v;
-}
 
-lval eval_op(lval* x, char* op, lval y){
-	if(x->type==LVAL_ERR){
-		return x;
-	}
-	if(y->type==LVAL_ERR){
-		return y;
-	}
-
-	//otherwise do the maths on the numbervalues
-  if (strcmp(op, "+") == 0) { return lval_num(x->num + y->num); }
-  if (strcmp(op, "-") == 0) { return lval_num(x->num - y->num); }
-  if (strcmp(op, "*") == 0) { return lval_num(x->num * y->num); }
-  if (strcmp(op, "/") == 0) {
-    /* If second operand is zero return error */
-    return y.num == 0
-      ? lval_err(LERR_DIV_ZERO)
-      : lval_num(x->num / y->num);
-  }
-
-  return lval_err(LERR_BAD_OP);
-}
+// okay, now for the builtin op to evaluate the eval
+// this is only meant to be processed once the entire AST is parsed
+// so there are only numbers in the lef nodes
+// and it does the parsing of the AST recursively of course
 
 // the pointer now makes sense, since it's a pointer to an object
 // since c is always pass by value, and not pass by reference
 // you essentially have to force pass by reference in by using pointers
 // and do it manually!
-lval eval(mpc_ast_t* t){
-	if(strstr(t->tag, "number")){
-		//if there is an error in conversion
-		// I don't understand what is happening here. ERANGE is not devined
-		// and errno is always 0, so I don't know!
-		errno = 0;
-		long x = strtol(t->contents, NULL, 10);
-		return errno!=ERANGE ? lval_num(x): lval_err(LERR_BAD_NUM);
-	}
-	//get the operation and the first operand!
-	char* op = t->children[1]->contents;
-	//evaluate the first operand to its maximum potential
-	lval x = eval(t->children[2]);
-
-	int i = 3;
-	while(strstr(t->children[i]->tag, "expr")){
-		x = eval_op(x, op, eval(t->children[i]));
-		i++;
-		//I'm not sure I'm understanding thie fully, the recursion. oh well
-	}
-	return x;
-}
-
 int main(int argc, char** argv) {
   
   
@@ -349,7 +360,7 @@ int main(int argc, char** argv) {
     mpc_result_t r;
     if (mpc_parse("<stdin>", input, Lispy, &r)) {
       
-      lval* x = lval_read(r.output);
+      lval* x = lval_eval(lval_read(r.output));
       lval_println(x);
       lval_del(x);
       
