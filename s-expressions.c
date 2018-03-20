@@ -38,7 +38,7 @@ enum {LERR_DIV_ZERO, LERR_BAD_OP, LERR_BAD_NUM};
 // the cel will be a pointer to a list of pointers to the individual lvals
 
 
-typedef struct {
+typedef struct lval{
 	int type;
 	long num;
 	//error and symbol types are strings now
@@ -48,7 +48,6 @@ typedef struct {
 	// and nwo a struct within a struct, count and pointer to list of lvals
 	struct lval** cell;
 } lval;
-
 
 //rewrite the lvals to return a pointer to the lval and not the actual thing
 // itself, so it's easier!
@@ -127,6 +126,15 @@ lval* lval_read_num(mpc_ast_t* t){
 	return errno!=ERANGE ? lval_num(x): lval_err("Invalid Number!");
 }
 
+// add a new lval to the list in cell
+lval* lval_add(lval* v, lval* x){
+	v->count++;
+	v->cell = realloc(v->cell, sizeof(lval*) * v->count); // his allocates 
+	// enough space for the new cell structure
+	v->cell[v->count-1] = x; // since it is zero indexed!
+	return v;
+}
+
 lval* lval_read(mpc_ast_t* t){
 	//if symbol or number return conversion to that type
 	if(strstr(t->tag, "number")){
@@ -154,16 +162,6 @@ lval* lval_read(mpc_ast_t* t){
   return x;
 }
 
-// add a new lval to the list in cell
-lval* lval_add(lval* v, lval* x){
-	v->count++;
-	v->cell = realloc(v->cell, sizeof(lval*) * v->count); // his allocates 
-	// enough space for the new cell structure
-	v->cell[v->count-1] = x; // since it is zero indexed!
-	return v;
-}
-
-
 
 // resolve circular dependency using a forward definition
 void lval_print(lval* v);
@@ -178,7 +176,7 @@ void lval_expr_print(lval* v, char open, char close){
 	for (int i = 0; i<v->count; i++){
 		lval_print(v->cell[i]);
 	//don't put a trailing spaceif last element!
-	if(i!=(v->coutn-1)){
+	if(i!=(v->count-1)){
 		putchar(' ');
 	}
 }
@@ -188,8 +186,8 @@ putchar(close);
 
 void lval_print(lval* v){
 	//needs to check if an error or not, to print correctly
-	switch(v.type){
-		case LVAL_NUM: printf("%li",v.num); break;
+	switch(v->type){
+		case LVAL_NUM: printf("%li",v->num); break;
 		case LVAL_ERR: printf("Error: %s", v->err); break;
 		case LVAL_SYM: printf("%s", v->sym); break;
 		case LVAL_SEXPR: lval_expr_print(v, '(', ')'); break;
@@ -203,23 +201,23 @@ void lval_println(lval* v){
 
 // replace the eval op to deal with lvals as intended
 //including with the errors
-lval eval_op(lval x, char* op, lval y){
-	if(x.type==LVAL_ERR){
+lval eval_op(lval* x, char* op, lval y){
+	if(x->type==LVAL_ERR){
 		return x;
 	}
-	if(y.type==LVAL_ERR){
+	if(y->type==LVAL_ERR){
 		return y;
 	}
 
 	//otherwise do the maths on the numbervalues
-  if (strcmp(op, "+") == 0) { return lval_num(x.num + y.num); }
-  if (strcmp(op, "-") == 0) { return lval_num(x.num - y.num); }
-  if (strcmp(op, "*") == 0) { return lval_num(x.num * y.num); }
+  if (strcmp(op, "+") == 0) { return lval_num(x->num + y->num); }
+  if (strcmp(op, "-") == 0) { return lval_num(x->num - y->num); }
+  if (strcmp(op, "*") == 0) { return lval_num(x->num * y->num); }
   if (strcmp(op, "/") == 0) {
     /* If second operand is zero return error */
     return y.num == 0
       ? lval_err(LERR_DIV_ZERO)
-      : lval_num(x.num / y.num);
+      : lval_num(x->num / y->num);
   }
 
   return lval_err(LERR_BAD_OP);
