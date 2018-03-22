@@ -67,12 +67,77 @@ typedef struct lval{
 } lval;
 // lenv is the environment data structure!
 
+// this is effectively just a parrallel array of symbols and values
+// for the variables in the environment
+// and ofcourse the count since c needs that since it's array abilities are rather lacking!
 struct lenv{
 	int count;
 	char** syms;
 	lval** vals;
 }
 
+//create a new environment
+lenv* lenv_new(void){
+	lenv* e = malloc(sizeof(lenv));
+	e->count = 0;
+	e->syms = NULL;
+	e->vals = NULL;
+	return e;
+}
+
+void lenv_dev(lenv* e){
+	//ensure all the memory taken up is freed!
+	// it is kind of cool in a way how you have to do this
+	for (int i = 0; i<e->count; i++){
+		free(e->syms[i]);
+		lval_del(e->vals[i]);
+	}
+	free(e->syms);
+	free(e->vals);
+	free(e);
+}
+
+// so, now there needs to be ways to add, presumably remove, and get variables from the environment
+// at the moment it uses a simple linear(!) list search, which is horrendously inefficient
+// inreality you probably need hashmaps
+
+lval* lenv_get(lenv* e, lval* k){
+	// I'm not a fan of this guy's variable naming. it obscures more than it reveals!
+
+	//iterate over all items in environment
+	for (int i = 0; i< e->count; i++){
+		//check if stored string matches symbol string
+		// if it does return copy - since immutability!
+		if(strcmp(c->syms[i], k->sym)==0){
+			return lval_copy(e->vals[i])
+		}
+	}	
+	// if no symbol foud return error
+	return lval_err("unbound symbol!");
+}
+
+//add a variable to the environment
+
+void lenv_put(lenv* e, lval* k, lval* v){
+	// k is the key - i.e. the symbol presumably, and v -s the value
+	//  but this could be solved by naming the variables better, dagnabbit!
+
+	//first iterate to check if variable already exists
+	for (int i =0; i<e->count; i++){
+		//if variable is found delete with item at that position and repalce with var
+		// supplied by user
+		if(strcmp(e->syms[i], k->sym)==0){
+			lval_del(e->vals[i]); // this is necessary to prevent memory leaks!
+			e->vals[i] = lval_copy(v);
+			return;
+		}
+	}
+
+	//if no existing entry allocate space for the new entry
+	e->count++;
+	e->vals = realloc(e->vals, sizeof(lval*) * e->count);
+	e->syms = realloc(e->syms, sizeof(char*) * e->count);
+}
 //rewrite the lvals to return a pointer to the lval and not the actual thing
 // itself, so it's easier!
 
