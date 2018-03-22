@@ -244,6 +244,8 @@ lval* lval_take(lval* v, int i){
 }
 
 
+
+//and finally the builtin op for the lval
 lval* builtin_op(lval* a, char* op){
 
 	// ensure all the arguments to the thing are numbers
@@ -338,6 +340,63 @@ lval* lval_eval_sexpr(lval* v){
 
 
 
+
+
+// okay, definitions for qexpr functions here!
+
+// functions are list - creates a q expression containing it
+//head, tail
+// join,//and eval
+// those are the basic building blocks of the q expression - i.e. macro!
+
+lval* builtin_head(lval* a){
+	//check error conditions
+	if(a->count!=1){
+		lval_del(a);
+		return lval_err("Fucntion head passed too many arguments!");
+	}
+	if(a->cell[0]->type!=LVAL_QEXPR){
+		lval_del(a);
+		return lval_err("Function 'head' passed incorrect types!");
+	}
+	if(a->cell[0]->count == 0){
+		lval_del(a);
+		return lval_err("Function head passed '{}'");
+	}
+	// otherwise take first argument
+	lval* v = lval_take(a,0);
+	while(v->count>1) {
+		lval_del(lval_pop(v,1));
+	}
+	return v;
+}
+
+lval* builtin_tail(lval* a) {
+  /* Check Error Conditions */
+  if (a->count != 1) {
+    lval_del(a);
+    return lval_err("Function 'tail' passed too many arguments!");
+  }
+
+  if (a->cell[0]->type != LVAL_QEXPR) {
+    lval_del(a);
+    return lval_err("Function 'tail' passed incorrect types!");
+  }
+
+  if (a->cell[0]->count == 0) {
+    lval_del(a);
+    return lval_err("Function 'tail' passed {}!");
+  }
+
+  /* Take first argument */
+  lval* v = lval_take(a, 0);
+
+  /* Delete first element and return */
+  lval_del(lval_pop(v, 0));
+  return v;
+
+
+
 // okay, now for the builtin op to evaluate the eval
 // this is only meant to be processed once the entire AST is parsed
 // so there are only numbers in the lef nodes
@@ -360,7 +419,8 @@ int main(int argc, char** argv) {
 	mpca_lang(MPCA_LANG_DEFAULT,
 	  "                                          \
 	    number : /-?[0-9]+/ ;                    \
-	    symbol : '+' | '-' | '*' | '/' ;         \
+	    symbol : \"list\" | \"head\" | \"tail\"                \
+           | \"join\" | \"eval\" | '+' | '-' | '*' | '/' ; \
 	    sexpr  : '(' <expr>* ')' ;               \
 	    qexpr  : '{' <expr>  '}' ;               \
 	    expr   : <number> | <symbol> | <sexpr> ; \
