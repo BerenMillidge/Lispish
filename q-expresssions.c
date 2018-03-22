@@ -28,7 +28,7 @@ void add_history(char* unused) {}
 
 
 //create enum types for possible lval types
-enum { LVAL_NUM, LVAL_ERR, LVAL_SYM, LVAL_SEXPR};
+enum { LVAL_NUM, LVAL_ERR, LVAL_SYM, LVAL_SEXPR, LVAL_QEXPR};
 
 enum {LERR_DIV_ZERO, LERR_BAD_OP, LERR_BAD_NUM};
 
@@ -89,6 +89,14 @@ lval* lval_sexpr(void){
 	v->cell = NULL;
 	return v;
 }
+//constuct the q expression
+lval* lval_qexpr(void){
+	lval* v = malloc(sizeof(lval));
+	v->type = LVAL_QEXPR;
+	v->count = 0;
+	v->cell = NULL;
+	return v;
+}
 
 
 //delete the lval correctly depending on type to ensure there are no memory leaks
@@ -103,6 +111,7 @@ void lval_del(lval* v){
 		case LVAL_SYM: free(v->sym); break;
 
 		// if s-expr then delete all elements inside
+		case LVAL_QEXPR:
 		case LVAL_SEXPR:
 			for (int i = 0; i<v->count; i++){
 				lval_del(v->cell[i]);
@@ -144,6 +153,7 @@ lval* lval_read(mpc_ast_t* t){
 		return lval_sym(t->contents);
 	}
 
+
 	// if root or sexpr then create empty list
 	lval* x = NULL;
 	if (strcmp(t->tag, ">")==0){
@@ -152,10 +162,16 @@ lval* lval_read(mpc_ast_t* t){
 	if(strstr(t->tag, "sexpr")){
 		x = lval_sexpr();
 	}
+		//can reuse most of the stuff for sexpr for qexpr, but need to create an empty one
+	if(strstr(t->tag,'qexpr')){
+		x = lval_qexpr();
+	}
 	//fill in the list with any valid expression contained within
 	for (int i = 0; i < t->children_num; i++) {
     if (strcmp(t->children[i]->contents, "(") == 0) { continue; }
     if (strcmp(t->children[i]->contents, ")") == 0) { continue; }
+    if (strcmp(t->children[i]->contents, "{") == 0) { continue; }
+    if (strcmp(t->children[i]->contents, "}") == 0) { continue; }
     if (strcmp(t->children[i]->tag,  "regex") == 0) { continue; }
     x = lval_add(x, lval_read(t->children[i]));
   }
@@ -191,6 +207,7 @@ void lval_print(lval* v){
 		case LVAL_ERR: printf("Error: %s", v->err); break;
 		case LVAL_SYM: printf("%s", v->sym); break;
 		case LVAL_SEXPR: lval_expr_print(v, '(', ')'); break;
+		case LVAL_QEXPR: lval_expr_print(v, '{','}'); break;
 	}
 }
 
