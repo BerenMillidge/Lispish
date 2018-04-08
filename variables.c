@@ -85,7 +85,7 @@ lenv* lenv_new(void){
 	return e;
 }
 
-void lenv_dev(lenv* e){
+void lenv_del(lenv* e){
 	//ensure all the memory taken up is freed!
 	// it is kind of cool in a way how you have to do this
 	for (int i = 0; i<e->count; i++){
@@ -140,6 +140,52 @@ void lenv_put(lenv* e, lval* k, lval* v){
 }
 //rewrite the lvals to return a pointer to the lval and not the actual thing
 // itself, so it's easier!
+
+// okay, now the lvals now need t obe defined to eval a lval
+
+lval* lval_eval(lenv( e, lval* v){
+	if (v->type == LVAL_SYM){
+		//get it from environment
+		lval* x = lenv_get(e,v);
+		lval_del(v);
+		return x;
+	}
+	if (v->type ==LVAL_SEXPR){
+		return lval_eval_sexpr(e,v);
+	}
+	return v;
+})
+
+// so now the evaluation of the s expression needs to change also
+lval* lval_eval_sexpr(lenv* e, lval* v){
+	for (int i = 0; i<v->count; i++){
+		v->cell[i] = lval_eval(e, v->cell[i]);
+	}
+
+	for (int i = 0; i< v->count; i++){
+		if (v->cell[i] ->type == LVAL_ERR){
+			return lval_take(v,i)
+		}
+	}
+
+	if (v->count ==0){
+		return v;
+	}
+	if (v->count == 1){
+		return lval_take(v,0);
+	}
+	//ensure first element is a function afte evaluatoin
+	lval* f = lval_pop(v,0)
+	if (f->type !=LVAL_FUN){
+		lval_del(v);
+		lval_del(f);
+		return lval_err("first elemen is not a functoin");
+	}
+	// if so cal function to get result
+	lval* result = f->fun(e,v);
+	lval_del(f);
+	return result;
+}
 
 //lval function constructor
 lval* lval_fun(lbuiltin func){
